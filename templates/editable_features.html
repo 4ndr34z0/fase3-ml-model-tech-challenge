@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Edição de Features e Classificação</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        th { background-color: #f2f2f2; font-size: 0.8em; }
+        .feature-input { width: 100%; box-sizing: border-box; border: none; padding: 0; margin: 0; background: transparent; font-size: 1em; }
+        .prediction-cell { font-weight: bold; color: #007bff; background-color: #e6f0ff; }
+        .button-container { margin-top: 20px; }
+        button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #1e7e34; }
+        .loading { color: #ffc107; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Dados da Nota (SEQ_NFE: {{ seq_nfe }})</h2>
+    <p>Edite as features se necessário e clique em Classificar para submeter ao modelo.</p>
+
+    <form id="predictionForm">
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 100px;">SEQ_NFE</th>
+                    
+                    <th colspan="{{ features | length }}" style="text-align: center; background-color: #e6f0ff; color: #007bff;">
+                        Features (Colunas Editáveis)
+                    </th>
+                    
+                    <th rowspan="2" style="background-color: #007bff; color: white; width: 150px;" title="Resultado da Classificação pelo Modelo">
+                        Tipo Imposto (Classe Y)
+                    </th>
+                </tr>
+            
+                <tr>
+                {% for feature in features %}
+                    <th title="{{ feature }}">{{ feature }}</th>
+                {% endfor %}
+                </tr>                
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr data-row-key="{{ row['SEQ_NFE'] }}_{{ loop.index0 }}"> 
+                    <td>
+                        <input type="hidden" class="seq-nfe-input" name="SEQ_NFE" value="{{ row['SEQ_NFE'] }}">
+                        {{ row['SEQ_NFE'] }}
+                    </td>
+                    {% for feature in features %}
+                        <td>
+                            <input type="text" 
+                                   class="feature-input" 
+                                   name="{{ feature }}" 
+                                   value="{{ row[feature] if row[feature] is not none else '' }}">
+                        </td>
+                    {% endfor %}
+                    <td class="prediction-cell" id="prediction_{{ row['SEQ_NFE'] }}_{{ loop.index0 }}">
+                        {{ row['Tipo Imposto'] }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+
+    <div class="button-container" align="right">
+        <button type="button" onclick="window.location.href='/'" style="background-color: #6c757d;">Nova Pesquisa</button>
+        <button type="button" onclick="submitForPrediction()">Classificar (Avaliar Modelo)</button>
+    </div>
+
+    <script>
+        function submitForPrediction() {
+            const table = document.getElementById('data-table');
+            const rows = table.querySelectorAll('tbody tr');
+            const dataToSend = [];
+
+            // 1. Coletar os dados da tabela
+            rows.forEach(row => {
+                const rowKey = row.getAttribute('data-row-key');
+                const rowData = {};
+                
+                // Coleta todos os inputs da linha
+                const featureInputs = row.querySelectorAll('.feature-input');
+                const seqNfeInput = row.querySelector('.seq-nfe-input');
+
+                rowData['SEQ_NFE'] = parseInt(seqNfeInput.value, 10);
+                
+                featureInputs.forEach(input => {
+                    const featureName = input.getAttribute('name');
+                    let value = input.value.trim();
+                    
+                    // Tratamento de valores nulos/vazios
+                    if (value === '' || value.toLowerCase() === 'nan' || value.toLowerCase() === 'none' || value.toLowerCase() === 'null') {
+                        value = null; 
+                    }
+                    
+                    // Tenta converter para número se possível, senão mantém como string ou null
+                    let finalValue = value;
+                    if (value !== null) {
+                        const numericValue = parseFloat(value);
+                        // Verifica se é um número válido e não o valor de null (NaN)
+                        if (!isNaN(numericValue) && isFinite(numericValue)) {
+                            // Se for um inteiro (sem ponto decimal), converte para int
+                            if (String(value).indexOf('.') === -1) {
+                                finalValue = parseInt(value, 10);
+                            } else {
+                                finalValue = numericValue;
+                            }
+                        }
+                    }
+                    
+                    rowData[featureName] = finalValue;
+                });
+                
+                // Adiciona o ID único para mapear o retorno da API
+                rowData['key'] = rowKey; 
+                dataToSend.push(rowData);
+            });
+
+            const dataToPredict = { data: dataToSend };
+
+            // 2. Mostrar status de carregamento
+            rows.forEach(row => {
+                const rowKey = row.getAttribute('data-row-key');
+                const cell = document.getElementById(`prediction_${rowKey}`);
+                cell.textContent = "Classificando...";
+                cell.classList.add('loading');
+                cell.style.color = '#ffc107';
+            });
+
+            // 3. Submeter via Fetch API
+            fetch("/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(dataToPredict),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 4. Atualizar a tela com os resultados
+                if (data.predictions) {
+                    rows.forEach(row => {
+                        const rowKey = row.getAttribute('data-row-key');
+                        const prediction = data.predictions[rowKey];
+                        const cell = document.getElementById(`prediction_${rowKey}`);
+                        
+                        cell.textContent = prediction || "Erro/Vazio";
+                        cell.classList.remove('loading');
+                        // Destaca em vermelho se houver erro
+                        cell.style.color = (prediction && prediction.includes('ERRO')) ? 'red' : '#007bff';
+                    });
+                } else if (data.error) {
+                    alert("Erro na API de predição: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Erro na comunicação com a API:", error);
+                alert("Erro ao tentar classificar os dados. Verifique o console do navegador.");
+            });
+        }
+    </script>
+</body>
+</html>

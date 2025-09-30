@@ -1,0 +1,107 @@
+import lightgbm as lgb
+import pandas as pd
+import numpy as np
+from typing import List
+
+# Define as features, na ordem correta
+FEATURE_NAMES = [
+    'COD_UF_EMIT', 'TIP_FIN_NFE', 'COD_CEST', 'COD_CST', 'COD_NCM', 'COD_CFOP', 
+    'EMIT_COD_CNAE', 'EMIT_CRT', 'EMIT_IND_SN', 'DEST_CNAE_PRINC', 'DEST_POSSUI_IE', 'DEST_SIMPLES'
+]
+
+# Features que devem ser tratadas como Categóricas (para corrigir o erro)
+CATEGORICAL_FEATURES = [
+    'COD_UF_EMIT', 'TIP_FIN_NFE', 'COD_CEST', 'COD_CST', 'COD_NCM', 'COD_CFOP', 
+    'EMIT_COD_CNAE', 'EMIT_CRT', 'EMIT_IND_SN', 'DEST_CNAE_PRINC', 'DEST_POSSUI_IE', 'DEST_SIMPLES'
+]
+
+MODEL_FILE_PATH = "modelo_lgbm 1.txt"
+DATA_FILE_PATH = "Dados notas para classificação IA 20250909 1.xlsx - Exportar Planilha.csv"
+
+# Mapeamento de exemplo para as classes (Y)
+# AJUSTE ESTE MAPA com a descrição real dos seus 5 tipos de imposto.
+CLASSIFICATION_MAP = {
+    0: "ICMS_ST (Classe 0)",
+    1: "DIFAL (Classe 1)",
+    2: "IPI (Classe 2)",
+    3: "PIS_COFINS (Classe 3)",
+    4: "OUTROS (Classe 4)"
+}
+
+
+def predict_model(data_df: pd.DataFrame) -> List[str]:
+    """Carrega o modelo LightGBM e realiza a classificação dos dados."""
+    
+    try:
+        bst = lgb.Booster(model_file=MODEL_FILE_PATH)
+    except lgb.basic.LightGBMError as e:
+        print(f"ERRO: Não foi possível carregar o modelo. Erro: {e}")
+        return ["ERRO_MODELO"] * len(data_df)
+    
+    # Seleção de features e cópia
+    dados_para_predicao = data_df[FEATURE_NAMES].copy()
+
+    # Correção: Conversão para tipo 'category'
+    for col in CATEGORICAL_FEATURES:
+        if col in dados_para_predicao.columns:
+            # Converte para string primeiro para tratar NaN e tipos mistos consistentemente
+            dados_para_predicao[col] = dados_para_predicao[col].astype(str).astype('category')
+    
+    try:
+        print("DEBUG: Dados para predição (após conversão):")
+        print(dados_para_predicao.dtypes)
+        print(dados_para_predicao.head())
+        probabilidades = bst.predict(dados_para_predicao)
+        # argmax retorna o índice (0 a 4) da classe com maior probabilidade
+        classificacao_y_indices = np.argmax(probabilidades, axis=1)
+        
+        # Mapeamento do índice para o nome do imposto
+        classificacao_y_nomes = [CLASSIFICATION_MAP.get(idx, f"Classe_{idx}") for idx in classificacao_y_indices]
+        return classificacao_y_nomes
+    except Exception as e:
+        print(f"ERRO: Falha na predição. {e}")
+        return ["ERRO_PREDICAO"] * len(data_df)
+
+def load_data() -> pd.DataFrame:
+    """Carrega o arquivo CSV e garante que a coluna SEQ_NFE é um inteiro."""
+    try:
+        # Tenta carregar o arquivo CSV
+        df = pd.read_csv(DATA_FILE_PATH, sep=';')
+        
+        # Se o cabeçalho estiver incorreto (baseado no snippet), tenta corrigir
+        if df.columns[0] != 'SEQ_NFE' and df.shape[0] > 0:
+            df = pd.read_csv(DATA_FILE_PATH, sep=';', header=None, skiprows=1)
+            header = pd.read_csv(DATA_FILE_PATH, sep=';', nrows=1).columns.tolist()
+            df.columns = header
+
+        # ==========================================================
+        # LINHAS DE DEBUGGING A ADICIONAR
+        print("-" * 50)
+        print("DEBUG: Colunas do DataFrame após o carregamento:", df.columns.tolist())
+        if 'SEQ_NFE' not in df.columns:
+             # Isso é crucial se a coluna estiver com nome errado, como 'SEQ_NFE '
+             print("ERRO DE COLUNA: SEQ_NFE não encontrado. Colunas encontradas:", df.columns.tolist())
+             print("DEBUG: Tentando renomear a coluna mais próxima de SEQ_NFE.")
+             # Tenta renomear a primeira coluna se o nome estiver sujo (e.g., espaço)
+             if df.columns[0].strip() == 'SEQ_NFE':
+                 df.rename(columns={df.columns[0]: 'SEQ_NFE'}, inplace=True)
+        print("-" * 50)
+        # ==========================================================
+
+        # Garantir que SEQ_NFE é um tipo numérico (int) para a busca.
+        if 'SEQ_NFE' in df.columns:
+            df['SEQ_NFE'] = pd.to_numeric(df['SEQ_NFE'], errors='coerce').fillna(-1).astype(int)
+        
+        # Filtrar apenas as colunas necessárias para evitar erros de leitura
+        required_cols = ['SEQ_NFE'] + FEATURE_NAMES
+        df = df[[col for col in required_cols if col in df.columns]]
+        df = df[df['SEQ_NFE'] != -1] # Remove linhas com erro na conversão de SEQ_NFE
+        
+        return df
+    
+    except FileNotFoundError:
+        print(f"ERRO FATAL: Arquivo de dados não encontrado: '{DATA_FILE_PATH}'.")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"ERRO FATAL: Falha ao carregar ou processar os dados: {e}")
+        return pd.DataFrame()
