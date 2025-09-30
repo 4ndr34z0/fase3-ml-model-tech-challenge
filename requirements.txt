@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pandas
+lightgbm
+pydantic
+jinja2
+python-multipart  # Necessário para FastAPI processar formulários HTML

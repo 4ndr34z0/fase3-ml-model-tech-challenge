@@ -1,0 +1,17 @@
+# render.yaml
+
+# Versão da especificação
+version: v1
+services:
+  - type: web
+    name: classificacao-lgbm-api
+    env: python
+    # Região onde o serviço será implantado
+    region: oregon # ou frankfurt, virginia, etc.
+    # Comando de inicialização
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    # Ramificação do git a ser rastreada
+    branch: main 
+    # Configuração do plano (gratuito)
+    plan: free
