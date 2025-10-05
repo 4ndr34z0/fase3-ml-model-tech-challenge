@@ -19,13 +19,13 @@ MODEL_FILE_PATH = "modelo_lgbm 1.txt"
 DATA_FILE_PATH = "Dados notas para classificação IA 20250909 1.xlsx - Exportar Planilha.csv"
 
 # Mapeamento de exemplo para as classes (Y)
-# AJUSTE ESTE MAPA com a descrição real dos seus 5 tipos de imposto.
+# TODO: ajustar conforme o contexto real / AJUSTE ESTE MAPA com a descrição real dos seus 5 tipos de imposto
 CLASSIFICATION_MAP = {
-    0: "ICMS_ST (Classe 0)",
-    1: "DIFAL (Classe 1)",
-    2: "IPI (Classe 2)",
-    3: "PIS_COFINS (Classe 3)",
-    4: "OUTROS (Classe 4)"
+    0: "Classe 0",
+    1: "Classe 1",
+    2: "Classe 2",  # DIFAL ?
+    3: "Classe 3",
+    4: "Classe 4"
 }
 
 
