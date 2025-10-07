@@ -5,27 +5,31 @@ from typing import List
 
 # Define as features, na ordem correta
 FEATURE_NAMES = [
-    'COD_UF_EMIT', 'TIP_FIN_NFE', 'COD_CEST', 'COD_CST', 'COD_NCM', 'COD_CFOP', 
-    'EMIT_COD_CNAE', 'EMIT_CRT', 'EMIT_IND_SN', 'DEST_CNAE_PRINC', 'DEST_POSSUI_IE', 'DEST_SIMPLES'
-]
+    'COD_UF_EMIT', 'TIP_FIN_NFE', 'CEST_COMPLETO', 'COD_CST', 'NCM_COMPLETO', 'CFOP_COMPLETO', 'EMIT_CNAE_COMPLETO', 'EMIT_CRT', 
+    'EMIT_IND_SN', 'DEST_CNAE_COMPLETO', 'DEST_SITUACAO', 'DEST_IND_SN', 'DEST_POSSUI_IE', 'EMIT_CNAE_DIVISAO', 'EMIT_CNAE_GRUPO', 
+    'EMIT_CNAE_CLASSE', 'DEST_CNAE_DIVISAO', 'DEST_CNAE_GRUPO', 'DEST_CNAE_CLASSE', 'NCM_CAPITULO', 'NCM_POSICAO', 'NCM_SUBPOSICAO', 
+    'CFOP_NATUREZA', 'CFOP_OPERACAO', 'POSSUI_CEST', 'CEST_SEGMENTO', 'CEST_ITEM']
 
 # Features que devem ser tratadas como Categóricas (para corrigir o erro)
 CATEGORICAL_FEATURES = [
-    'COD_UF_EMIT', 'TIP_FIN_NFE', 'COD_CEST', 'COD_CST', 'COD_NCM', 'COD_CFOP', 
-    'EMIT_COD_CNAE', 'EMIT_CRT', 'EMIT_IND_SN', 'DEST_CNAE_PRINC', 'DEST_POSSUI_IE', 'DEST_SIMPLES'
+    'COD_UF_EMIT', 'TIP_FIN_NFE', 'CEST_COMPLETO', 'COD_CST', 'NCM_COMPLETO', 'CFOP_COMPLETO', 'EMIT_CNAE_COMPLETO', 'EMIT_CRT', 
+    'EMIT_IND_SN', 'DEST_CNAE_COMPLETO', 'DEST_SITUACAO', 'DEST_IND_SN', 'DEST_POSSUI_IE', 'EMIT_CNAE_DIVISAO', 'EMIT_CNAE_GRUPO', 
+    'EMIT_CNAE_CLASSE', 'DEST_CNAE_DIVISAO', 'DEST_CNAE_GRUPO', 'DEST_CNAE_CLASSE', 'NCM_CAPITULO', 'NCM_POSICAO', 'NCM_SUBPOSICAO', 
+    'CFOP_NATUREZA', 'CFOP_OPERACAO', 'POSSUI_CEST', 'CEST_SEGMENTO', 'CEST_ITEM'
 ]
 
-MODEL_FILE_PATH = "modelo_lgbm 1.txt"
-DATA_FILE_PATH = "Dados notas para classificação IA 20250909 1.xlsx - Exportar Planilha.csv"
+
+# TODO: ajustar antes de executar
+MODEL_FILE_PATH = "modelo_lgbm 3.txt"
+DATA_FILE_PATH = "base_para_teste 4.csv"
 
 # Mapeamento de exemplo para as classes (Y)
-# TODO: ajustar conforme o contexto real / AJUSTE ESTE MAPA com a descrição real dos seus 5 tipos de imposto
 CLASSIFICATION_MAP = {
-    0: "Classe 0",
-    1: "Classe 1",
-    2: "Classe 2",  # DIFAL ?
-    3: "Classe 3",
-    4: "Classe 4"
+    0: "0 -> ICMS ANT",
+    1: "1 -> ICMS ANTEF",
+    2: "2 -> ICMS DIFAL",
+    3: "3 -> ICMS ST",
+    4: "4 -> ICMS STDIF"
 }
 
 
@@ -53,6 +57,13 @@ def predict_model(data_df: pd.DataFrame) -> List[str]:
         print(dados_para_predicao.head())
         probabilidades = bst.predict(dados_para_predicao)
         # argmax retorna o índice (0 a 4) da classe com maior probabilidade
+        if probabilidades.ndim == 1:
+            # fallback binário, mas esperado multiclass
+            classificacao_y_indices = (probabilidades >= 0.5).astype(int)
+        else:
+            classificacao_y_indices = np.argmax(probabilidades, axis=1)
+
+        print(f"Probabilidades: {probabilidades}")
         classificacao_y_indices = np.argmax(probabilidades, axis=1)
         
         # Mapeamento do índice para o nome do imposto

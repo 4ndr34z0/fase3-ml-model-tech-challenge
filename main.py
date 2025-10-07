@@ -16,22 +16,54 @@ data_store: pd.DataFrame = None
 
 # Pydantic Model para as linhas de dados (X) enviadas para a predição
 class FeatureRow(BaseModel):
-    # O Pydantic irá tentar converter o tipo de dado recebido (útil para o modelo)
+    # Identificador (não é feature do modelo)
     SEQ_NFE: int 
+    
+    # 1. FEATURES ORIGINAIS/COMPLETAS (Códigos longos ou variáveis originais)
+    
+    # COD_UF_EMIT: Confirmado como String ou Nulo
     COD_UF_EMIT: Optional[str]
-    TIP_FIN_NFE: Union[int, str]
-    COD_CEST: Optional[int]
-    COD_CST: Union[int, str]
-    COD_NCM: Union[int, str]
-    COD_CFOP: Union[int, str]
-    EMIT_COD_CNAE: Union[int, str, None]
-    EMIT_CRT: Union[int, str]
-    EMIT_IND_SN: Union[str, None]
-    DEST_CNAE_PRINC: Union[int, str, None]
-    DEST_POSSUI_IE: Union[int, str]
-    DEST_SIMPLES: Union[str, None]
-    # 'key' é adicionado apenas no frontend para mapear o retorno
-    key: str 
+    TIP_FIN_NFE: Optional[Union[int, str]]
+    CEST_COMPLETO: Optional[int]
+    COD_CST: Optional[Union[int, str]]
+    NCM_COMPLETO: Optional[Union[int, str]]
+    CFOP_COMPLETO: Optional[Union[int, str]]
+    EMIT_CNAE_COMPLETO: Optional[Union[int, str]]
+    DEST_CNAE_COMPLETO: Optional[Union[int, str]]
+    
+    # Indicadores/Status
+    EMIT_CRT: Optional[Union[int, str]]
+    EMIT_IND_SN: Optional[str] 
+    DEST_SITUACAO: Optional[Union[int, str]]
+    DEST_IND_SN: Optional[int] 
+    DEST_POSSUI_IE: Optional[Union[int, str]]
+    
+    # 2. FEATURES DE DECOMPOSIÇÃO (Partes do NCM, CNAE, CFOP)
+    
+    # CNAE Decomposição
+    EMIT_CNAE_DIVISAO: Optional[Union[int, str]]
+    EMIT_CNAE_GRUPO: Optional[Union[int, str]]
+    EMIT_CNAE_CLASSE: Optional[Union[int, str]]
+    DEST_CNAE_DIVISAO: Optional[Union[int, str]]
+    DEST_CNAE_GRUPO: Optional[Union[int, str]]
+    DEST_CNAE_CLASSE: Optional[Union[int, str]]
+    
+    # NCM Decomposição
+    NCM_CAPITULO: Optional[Union[int, str]]
+    NCM_POSICAO: Optional[Union[int, str]]
+    NCM_SUBPOSICAO: Optional[Union[int, str]]
+    
+    # CFOP Decomposição
+    CFOP_NATUREZA: Optional[Union[int, str]]
+    CFOP_OPERACAO: Optional[Union[int, str]]
+    
+    # CEST Decomposição
+    POSSUI_CEST: Optional[Union[int, str]] # Geralmente 0 ou 1
+    CEST_SEGMENTO: Optional[Union[int, str]]
+    CEST_ITEM: Optional[Union[int, str]]
+
+    # Chave interna do Frontend
+    key: str
 
 class PredictionRequest(BaseModel):
     data: List[FeatureRow]
@@ -116,8 +148,10 @@ async def predict_rows(prediction_request: PredictionRequest):
         return {"error": "Nenhum dado enviado para predição."}
 
     # 1. Converter Pydantic models para DataFrame
-    data_list = [row.dict(exclude={'key'}) for row in prediction_request.data]
+    data_list = [row.dict(exclude={'key', 'SEQ_NFE'}) for row in prediction_request.data]
     prediction_df = pd.DataFrame(data_list)
+
+    print(f"Dados para predição: {data_list}")  # Apenas para debug, pode ser removido
     
     # 2. Executar a predição
     classificacao_y = model_logic.predict_model(prediction_df)

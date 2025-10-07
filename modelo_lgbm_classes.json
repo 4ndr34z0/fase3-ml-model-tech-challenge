@@ -1,0 +1,16 @@
+{
+  "id_to_class": {
+    "0": "ANT",
+    "1": "ANTEF",
+    "2": "DIFAL",
+    "3": "ST",
+    "4": "STDIF"
+  },
+  "class_to_id": {
+    "ANT": 0,
+    "ANTEF": 1,
+    "DIFAL": 2,
+    "ST": 3,
+    "STDIF": 4
+  }
+}
