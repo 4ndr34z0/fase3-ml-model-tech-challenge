@@ -15,56 +15,61 @@ templates = Jinja2Templates(directory="templates")
 data_store: pd.DataFrame = None
 
 # Pydantic Model para as linhas de dados (X) enviadas para a predição
+# Não precisamos mais dos imports Optional e Union
+from pydantic import BaseModel
+
+# Pydantic Model para as linhas de dados (X) enviadas para a predição
 class FeatureRow(BaseModel):
-    # Identificador (não é feature do modelo)
+    # Todos os campos são obrigatórios (sem Optional) e com tipo único
+    
+    # SEQ_NFE: Veio como INT no JSON
     SEQ_NFE: int 
     
-    # 1. FEATURES ORIGINAIS/COMPLETAS (Códigos longos ou variáveis originais)
+    # 1. FEATURES ORIGINAIS/COMPLETAS
     
-    # COD_UF_EMIT: Confirmado como String ou Nulo
-    COD_UF_EMIT: Optional[str]
-    TIP_FIN_NFE: Optional[Union[int, str]]
-    CEST_COMPLETO: Optional[int]
-    COD_CST: Optional[Union[int, str]]
-    NCM_COMPLETO: Optional[Union[int, str]]
-    CFOP_COMPLETO: Optional[Union[int, str]]
-    EMIT_CNAE_COMPLETO: Optional[Union[int, str]]
-    DEST_CNAE_COMPLETO: Optional[Union[int, str]]
+    COD_UF_EMIT: str        # Veio como "PE" (str)
+    TIP_FIN_NFE: int        # Veio como 1 (int)
+    CEST_COMPLETO: int      # Veio como 0 (int)
+    COD_CST: int            # Veio como 0 (int)
+    NCM_COMPLETO: int       # Veio como 94034000 (int)
+    CFOP_COMPLETO: int      # Veio como 6152 (int)
+    EMIT_CNAE_COMPLETO: str # Veio como "AUSENTE" (str)
+    DEST_CNAE_COMPLETO: str # Veio como "47539000" (str - Pydantic aceita str se o valor original for str)
     
     # Indicadores/Status
-    EMIT_CRT: Optional[Union[int, str]]
-    EMIT_IND_SN: Optional[str] 
-    DEST_SITUACAO: Optional[Union[int, str]]
-    DEST_IND_SN: Optional[int] 
-    DEST_POSSUI_IE: Optional[Union[int, str]]
+    EMIT_CRT: int           # Veio como 3 (int)
+    EMIT_IND_SN: str        # Veio como "N" (str)
+    DEST_SITUACAO: int      # Veio como 2 (int)
+    DEST_IND_SN: int        # Veio como 0 (int)
+    DEST_POSSUI_IE: int     # Veio como 1 (int)
     
-    # 2. FEATURES DE DECOMPOSIÇÃO (Partes do NCM, CNAE, CFOP)
+    # 2. FEATURES DE DECOMPOSIÇÃO
     
-    # CNAE Decomposição
-    EMIT_CNAE_DIVISAO: Optional[Union[int, str]]
-    EMIT_CNAE_GRUPO: Optional[Union[int, str]]
-    EMIT_CNAE_CLASSE: Optional[Union[int, str]]
-    DEST_CNAE_DIVISAO: Optional[Union[int, str]]
-    DEST_CNAE_GRUPO: Optional[Union[int, str]]
-    DEST_CNAE_CLASSE: Optional[Union[int, str]]
+    # CNAE Decomposição (Veio como "AUSENTE" (str) ou número puro (int/str))
+    EMIT_CNAE_DIVISAO: str  
+    EMIT_CNAE_GRUPO: str    
+    EMIT_CNAE_CLASSE: str   
+    DEST_CNAE_DIVISAO: str  # Veio como "47" (str)
+    DEST_CNAE_GRUPO: str    # Veio como "475" (str)
+    DEST_CNAE_CLASSE: str   # Veio como "4753" (str)
     
-    # NCM Decomposição
-    NCM_CAPITULO: Optional[Union[int, str]]
-    NCM_POSICAO: Optional[Union[int, str]]
-    NCM_SUBPOSICAO: Optional[Union[int, str]]
+    # NCM Decomposição (Veio como INT)
+    NCM_CAPITULO: int       
+    NCM_POSICAO: int        
+    NCM_SUBPOSICAO: int     
     
-    # CFOP Decomposição
-    CFOP_NATUREZA: Optional[Union[int, str]]
-    CFOP_OPERACAO: Optional[Union[int, str]]
+    # CFOP Decomposição (Veio como INT)
+    CFOP_NATUREZA: int      
+    CFOP_OPERACAO: int      
     
-    # CEST Decomposição
-    POSSUI_CEST: Optional[Union[int, str]] # Geralmente 0 ou 1
-    CEST_SEGMENTO: Optional[Union[int, str]]
-    CEST_ITEM: Optional[Union[int, str]]
+    # CEST Decomposição (Veio como INT ou STR)
+    POSSUI_CEST: int        # Veio como 0 (int)
+    CEST_SEGMENTO: str      # Veio como "00" (str)
+    CEST_ITEM: str          # Veio como "00000" (str)
 
     # Chave interna do Frontend
     key: str
-
+    
 class PredictionRequest(BaseModel):
     data: List[FeatureRow]
 
@@ -151,8 +156,6 @@ async def predict_rows(prediction_request: PredictionRequest):
     data_list = [row.dict(exclude={'key', 'SEQ_NFE'}) for row in prediction_request.data]
     prediction_df = pd.DataFrame(data_list)
 
-    print(f"Dados para predição: {data_list}")  # Apenas para debug, pode ser removido
-    
     # 2. Executar a predição
     classificacao_y = model_logic.predict_model(prediction_df)
     

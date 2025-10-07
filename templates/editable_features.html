@@ -98,7 +98,10 @@
                     }
                     
                     // Tenta converter para número se possível, senão mantém como string ou null
+
                     let finalValue = value;
+                    /*
+                    ESSE CÓDIGO FOI COMENTADO PARA MANTER OS VALORES COMO STRING, POIS ALTERAÇÃO DE TIPO INFLUENCIA NA PREDIÇÃO
                     if (value !== null) {
                         const numericValue = parseFloat(value);
                         // Verifica se é um número válido e não o valor de null (NaN)
@@ -111,6 +114,7 @@
                             }
                         }
                     }
+                    */
                     
                     rowData[featureName] = finalValue;
                 });

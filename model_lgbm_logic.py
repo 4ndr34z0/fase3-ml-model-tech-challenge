@@ -49,7 +49,7 @@ def predict_model(data_df: pd.DataFrame) -> List[str]:
     for col in CATEGORICAL_FEATURES:
         if col in dados_para_predicao.columns:
             # Converte para string primeiro para tratar NaN e tipos mistos consistentemente
-            dados_para_predicao[col] = dados_para_predicao[col].astype(str).astype('category')
+            dados_para_predicao[col] = dados_para_predicao[col].astype('category')
     
     try:
         print("DEBUG: Dados para predição (após conversão):")
@@ -65,6 +65,7 @@ def predict_model(data_df: pd.DataFrame) -> List[str]:
 
         print(f"Probabilidades: {probabilidades}")
         classificacao_y_indices = np.argmax(probabilidades, axis=1)
+        print(f"Classificação Y: {classificacao_y_indices}")
         
         # Mapeamento do índice para o nome do imposto
         classificacao_y_nomes = [CLASSIFICATION_MAP.get(idx, f"Classe_{idx}") for idx in classificacao_y_indices]
