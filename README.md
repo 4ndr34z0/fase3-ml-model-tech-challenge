@@ -7,7 +7,8 @@ Este projeto implementa uma interface web simples usando **FastAPI** para buscar
 * `main.py`: Servidor principal e endpoints de API.
 * `model_lgbm_logic.py`: Lógica de carregamento de dados (`.csv`) e execução do modelo (`.txt`).
 * `templates/`: Arquivos HTML (Jinja2) para a interface do usuário.
-* `modelo_lgbm 1.txt`: Modelo LightGBM treinado.
+* `modelo_lgbm 3.txt`: Modelo LightGBM treinado.
+* `base_para_teste 5.csv`: Dados de notas e csv para teste do modelo.
 * `requirements.txt`: Dependências Python para instalação em ambiente de produção (Render).
 * `render.yaml`: Definição da infraestrutura para deploy no Render.
 
